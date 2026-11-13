@@ -75,8 +75,12 @@ Related words: list up to three useful synonyms or related words, or write None.
     });
 
     if (!response.ok) {
-      console.error("Gemini request failed with status", response.status);
-      return Response.json({ error: "Gemini could not generate an explanation." }, { status: 502 });
+      const providerError = (await response.text()).slice(0, 1500);
+      console.error("Gemini request failed", response.status, providerError);
+      return Response.json(
+        { error: "Gemini could not generate an explanation.", providerStatus: response.status },
+        { status: 502 }
+      );
     }
 
     const interaction = await response.json() as InteractionResponse;
