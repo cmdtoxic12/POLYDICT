@@ -20,7 +20,10 @@ interface InteractionResponse {
 export async function POST(request: Request) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    return Response.json({ error: "Gemini is not configured on the server." }, { status: 503 });
+    return Response.json(
+      { error: "Gemini is not configured on the server.", code: "not_configured" },
+      { status: 503 }
+    );
   }
 
   let body: unknown;
@@ -58,27 +61,46 @@ Examples:
 - Give three natural example sentences. Include the word in the source language.
 Related words: list up to three useful synonyms or related words, or write None.`;
 
-  try {
-    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/interactions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": apiKey,
-        "Api-Revision": "2026-05-20",
-      },
-      body: JSON.stringify({
-        model: "gemini-3.8-flash",
-        input: prompt,
-        store: false,
-      }),
-      signal: AbortSignal.timeout(25000),
-    });
+  const attempts = [
+    { model: "gemini-3.8-flash", delayMs: 0 },
+    { model: "gemini-3.8-flash", delayMs: 750 },
+    { model: "gemini-3.5-flash-lite", delayMs: 0 },
+  ];
+
+  for (const [index, attempt] of attempts.entries()) {
+    const { model, delayMs } = attempt;
+    if (delayMs) await new Promise((resolve) => setTimeout(resolve, delayMs));
+    let response: Response;
+    try {
+      response = await fetch("https://generativelanguage.googleapis.com/v1beta/interactions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": apiKey,
+          "Api-Revision": "2026-05-20",
+        },
+        body: JSON.stringify({ model, input: prompt, store: false }),
+        signal: AbortSignal.timeout(8000),
+      });
+    } catch (error) {
+      console.error(`Gemini request failed for ${model} on attempt ${index + 1}`, error);
+      if (index < attempts.length - 1) continue;
+      return Response.json(
+        { error: "Gemini is temporarily unavailable.", code: "network_error" },
+        { status: 502 }
+      );
+    }
 
     if (!response.ok) {
       const providerError = (await response.text()).slice(0, 1500);
-      console.error("Gemini request failed", response.status, providerError);
+      console.error(`Gemini request failed for ${model} on attempt ${index + 1}`, response.status, providerError);
+      if (response.status === 503 && index < attempts.length - 1) continue;
       return Response.json(
-        { error: "Gemini could not generate an explanation.", providerStatus: response.status },
+        {
+          error: "Gemini could not generate an explanation.",
+          code: "provider_error",
+          providerStatus: response.status,
+        },
         { status: 502 }
       );
     }
@@ -93,12 +115,14 @@ Related words: list up to three useful synonyms or related words, or write None.
       .trim();
 
     if (!text) {
-      return Response.json({ error: "Gemini returned an empty explanation." }, { status: 502 });
+      return Response.json({ error: "Gemini returned an empty explanation.", code: "provider_error" }, { status: 502 });
     }
 
-    return Response.json({ text });
-  } catch (error) {
-    console.error("Gemini request failed", error);
-    return Response.json({ error: "Gemini is temporarily unavailable." }, { status: 502 });
+    return Response.json({ text, model });
   }
+
+  return Response.json(
+    { error: "Gemini is temporarily unavailable.", code: "provider_error", providerStatus: 503 },
+    { status: 502 }
+  );
 }
