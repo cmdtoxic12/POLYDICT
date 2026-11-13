@@ -11,7 +11,7 @@ A clean, modern multilingual dictionary + learning app for:
 - Pronunciation (Web Speech API)
 - Favorites + Recent searches (saved in browser)
 - Dark / Light mode
-- **AI “Explain simply”** (smart local + optional real model)
+- **AI explanations** with simple and detailed meanings, usage notes, examples, and related words
 - **3 Quiz modes**:
   - Flashcard
   - Multiple Choice
@@ -38,26 +38,21 @@ Click the **Quiz** button (graduation cap) in the header.
 
 You can switch direction (English → Local or Local → English) and target language (Twi / Ewe / French / Spanish).
 
-### Enabling a Real AI Model (optional)
+### Connect Gemini
 
-The AI explanation works offline with a smart local fallback.  
-To use a real model (DeepSeek, GLM, etc.):
+The Gemini explanation runs through a Next.js server route, so the API key stays on the server and is never sent to the browser.
 
-1. Get a free API key from one of these (examples):
-   - NVIDIA NIM → https://build.nvidia.com
-   - Other free OpenAI-compatible providers
+1. Create a Gemini API key in [Google AI Studio](https://aistudio.google.com/app/apikey).
+2. For local development, create `.env.local` in the project root:
 
-2. In the browser console on the PolyDict page run:
+   ```env
+   GEMINI_API_KEY=your_key_here
+   ```
 
-```js
-localStorage.setItem("polydict_ai_base", "https://integrate.api.nvidia.com/v1")
-localStorage.setItem("polydict_ai_key", "nvapi-your-key-here")
-localStorage.setItem("polydict_ai_model", "deepseek-ai/deepseek-v4.1-flash")
-```
+3. Restart the development server. On your hosting provider, add `GEMINI_API_KEY` as a server-side environment variable for the deployed environment, then redeploy the site.
+4. Search for a word and choose **Explain in detail**.
 
-3. Refresh the page. The “Explain simply with AI” button will now call the real model.
-
-(You can later turn this into a settings UI.)
+If the key is missing or Gemini is unavailable, PolyDict shows a basic offline explanation and tells you how to enable Gemini. Never add the key to `NEXT_PUBLIC_*`, browser local storage, or committed source files.
 
 ### Project Structure
 
@@ -68,14 +63,16 @@ src/
   lib/
     dictionary.ts    # Lookup + pronunciation
     local-dictionary.ts  # Twi/Ewe word list
-    ai.ts            # AI explanations (local + real model)
+    ai.ts            # Gemini explanation client + offline fallback
     store.ts         # Zustand state
     types.ts
+
+  app/api/ai-explanation/route.ts  # Server-side Gemini API route
 ```
 
 ### Notes
 
 - Twi & Ewe coverage is best for the curated common words. You can expand `src/lib/local-dictionary.ts`.
-- OpenCode free models are mainly client-only; using NVIDIA / other free endpoints is the practical way for a web app.
+- The deployment host must support Next.js server routes for Gemini explanations to work.
 
 Built with ❤️ for language learners.

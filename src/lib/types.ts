@@ -33,9 +33,11 @@ export interface DictionaryResult {
 
 export interface AIEnhancedResult {
   simpleExplanation: string;
+  detailedExplanation: string;
   usageNotes: string;
   exampleSentences: string[];
   relatedWords: string[];
+  source: "gemini" | "local";
 }
 
 export interface SearchHistoryItem {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { getQuizWords, type LocalEntry } from "@/lib/local-dictionary";
 import { LANGUAGES, type LanguageCode } from "@/lib/types";
 import { speakWord } from "@/lib/dictionary";
@@ -32,24 +32,6 @@ export default function QuizMode({ onClose }: { onClose: () => void }) {
   const [selected, setSelected] = useState<string | null>(null);
   const [listeningRevealed, setListeningRevealed] = useState(false);
 
-  useEffect(() => {
-    resetQuiz();
-  }, [mode, targetLang, direction]);
-
-  const resetQuiz = () => {
-    const newWords = getQuizWords(8);
-    setWords(newWords);
-    setCurrentIndex(0);
-    setScore(0);
-    setShowAnswer(false);
-    setFinished(false);
-    setSelected(null);
-    setListeningRevealed(false);
-    if (newWords.length > 0) {
-      generateChoices(newWords[0], newWords);
-    }
-  };
-
   const current = words[currentIndex];
 
   const getQuestion = () => {
@@ -66,7 +48,7 @@ export default function QuizMode({ onClose }: { onClose: () => void }) {
     return current.word;
   };
 
-  const generateChoices = (entry: LocalEntry, pool: LocalEntry[]) => {
+  const generateChoices = useCallback((entry: LocalEntry, pool: LocalEntry[]) => {
     const correct =
       direction === "en-to-local"
         ? entry.translations[targetLang] || entry.word
@@ -85,7 +67,25 @@ export default function QuizMode({ onClose }: { onClose: () => void }) {
 
     const all = [correct, ...distractors].sort(() => Math.random() - 0.5);
     setChoices(all);
-  };
+  }, [direction, targetLang]);
+
+  const resetQuiz = useCallback(() => {
+    const newWords = getQuizWords(8);
+    setWords(newWords);
+    setCurrentIndex(0);
+    setScore(0);
+    setShowAnswer(false);
+    setFinished(false);
+    setSelected(null);
+    setListeningRevealed(false);
+    if (newWords.length > 0) {
+      generateChoices(newWords[0], newWords);
+    }
+  }, [generateChoices]);
+
+  useEffect(() => {
+    resetQuiz();
+  }, [mode, resetQuiz]);
 
   const handleNext = (correct: boolean) => {
     if (correct) setScore((s) => s + 1);

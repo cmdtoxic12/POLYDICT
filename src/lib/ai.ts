@@ -1,112 +1,94 @@
 import type { AIEnhancedResult, LanguageCode } from "./types";
 
-/**
- * AI explanation helper.
- * 
- * By default uses a smart local fallback.
- * You can enable a real model by setting these in the browser console
- * or later in settings:
- * 
- *   localStorage.setItem("polydict_ai_base", "https://integrate.api.nvidia.com/v1")
- *   localStorage.setItem("polydict_ai_key", "nvapi-...")
- *   localStorage.setItem("polydict_ai_model", "deepseek-ai/deepseek-v4.1-flash")
- * 
- * Popular free options (as of late 2026):
- * - NVIDIA NIM: https://integrate.api.nvidia.com/v1  (DeepSeek V4.1 Flash, GLM-5.3-Flash)
- * - Groq, OpenRouter free models, etc.
- */
-
-const DEFAULT_SYSTEM = `You are a helpful language teacher for learners in Ghana. 
-Explain words simply, give 2-3 short example sentences, and add one practical usage tip.
-Keep the response short and clear. Prefer everyday language.
-If the word is in Twi or Ewe, mention that it is commonly used in Ghana.`;
-
 export async function enhanceWithAI(
   word: string,
   definition: string,
   sourceLang: LanguageCode
 ): Promise<AIEnhancedResult> {
-  // Try real model first if configured
-  const base = typeof window !== "undefined" ? localStorage.getItem("polydict_ai_base") : null;
-  const key = typeof window !== "undefined" ? localStorage.getItem("polydict_ai_key") : null;
-  const model =
-    (typeof window !== "undefined" && localStorage.getItem("polydict_ai_model")) ||
-    "deepseek-ai/deepseek-v4.1-flash";
+  try {
+    const response = await fetch("/api/ai-explanation", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ word, definition, sourceLang }),
+    });
 
-  if (base && key) {
-    try {
-      const res = await fetch(`${base.replace(/\/$/, "")}/chat/completions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${key}`,
-        },
-        body: JSON.stringify({
-          model,
-          messages: [
-            { role: "system", content: DEFAULT_SYSTEM },
-            {
-              role: "user",
-              content: `Word: "${word}"\nDefinition: ${definition}\nSource language: ${sourceLang}\n\nGive:\n1. A very simple explanation (1-2 sentences)\n2. One short usage note\n3. Three short example sentences`,
-            },
-          ],
-          temperature: 0.5,
-          max_tokens: 400,
-        }),
-      });
+    if (!response.ok) throw new Error("Gemini request failed");
 
-      if (res.ok) {
-        const data = await res.json();
-        const content = data.choices?.[0]?.message?.content || "";
-        return parseAIResponse(content, word, definition);
-      }
-    } catch (err) {
-      console.warn("Real AI call failed, falling back to local:", err);
+    const result = await response.json() as { text?: unknown };
+    if (typeof result.text !== "string" || !result.text.trim()) {
+      throw new Error("Gemini returned an empty explanation");
     }
-  }
 
-  // Strong local fallback
-  return localEnhance(word, definition, sourceLang);
+    return parseAIResponse(result.text, word, definition, sourceLang);
+  } catch {
+    return localEnhance(word, definition, sourceLang);
+  }
 }
 
 function parseAIResponse(
   content: string,
   word: string,
-  definition: string
+  definition: string,
+  sourceLang: LanguageCode
 ): AIEnhancedResult {
-  // Very light parsing – works with most model outputs
-  const lines = content.split("\n").map((l) => l.trim()).filter(Boolean);
-
-  let simpleExplanation = `Simple meaning of "${word}": ${definition.split(".")[0]}.`;
-  let usageNotes = `Use "${word}" carefully depending on context and formality.`;
+  const fallback = localEnhance(word, definition, sourceLang);
+  const sections: Record<string, string> = {
+    simple: "",
+    detailed: "",
+    usage: "",
+    related: "",
+  };
   const exampleSentences: string[] = [];
+  let activeSection = "";
 
-  for (const line of lines) {
-    const lower = line.toLowerCase();
-    if (lower.includes("explanation") || lower.startsWith("1.")) {
-      simpleExplanation = line.replace(/^[\d\.\-\*]+\s*/, "").replace(/simple explanation[:\s]*/i, "");
-    } else if (lower.includes("usage") || lower.includes("note") || lower.startsWith("2.")) {
-      usageNotes = line.replace(/^[\d\.\-\*]+\s*/, "").replace(/usage note[s]?[:\s]*/i, "");
-    } else if (
-      line.startsWith("-") ||
-      line.startsWith("•") ||
-      /^\d+\./.test(line) ||
-      lower.includes("example")
-    ) {
-      const cleaned = line.replace(/^[\d\.\-\*•]+\s*/, "").replace(/example[s]?[:\s]*/i, "");
-      if (cleaned.length > 5) exampleSentences.push(cleaned);
+  for (const rawLine of content.split("\n")) {
+    const line = rawLine.trim();
+    if (!line) continue;
+
+    const heading = line.match(/^(simple meaning|detailed meaning|usage notes|examples|related words)\s*:\s*(.*)$/i);
+    if (heading) {
+      const name = heading[1].toLowerCase();
+      activeSection = name === "simple meaning"
+        ? "simple"
+        : name === "detailed meaning"
+          ? "detailed"
+          : name === "usage notes"
+            ? "usage"
+            : name === "related words"
+              ? "related"
+              : "examples";
+      if (activeSection === "examples") {
+        if (heading[2].trim()) exampleSentences.push(heading[2].trim());
+      } else {
+        sections[activeSection] = heading[2].trim();
+      }
+      continue;
+    }
+
+    if (activeSection === "examples") {
+      const example = line.replace(/^[-*•]\s*/, "").replace(/^\d+[.)]\s*/, "").trim();
+      if (example && example.toLowerCase() !== "none") exampleSentences.push(example);
+    } else if (activeSection && sections[activeSection]) {
+      sections[activeSection] += ` ${line}`;
+    } else if (activeSection && activeSection !== "examples") {
+      sections[activeSection] = line;
     }
   }
 
-  while (exampleSentences.length < 3) {
-    exampleSentences.push(`I learned the word "${word}" today.`);
+  const examples = exampleSentences.filter(Boolean).slice(0, 3);
+  while (examples.length < 3) {
+    examples.push(`I learned the word "${word}" today.`);
   }
 
   return {
-    simpleExplanation: simpleExplanation || `A clear way to understand "${word}": ${definition.split(".")[0]}.`,
-    usageNotes,
-    exampleSentences: exampleSentences.slice(0, 3),
-    relatedWords: [],
+    simpleExplanation: sections.simple || fallback.simpleExplanation,
+    detailedExplanation: sections.detailed || fallback.detailedExplanation,
+    usageNotes: sections.usage || fallback.usageNotes,
+    exampleSentences: examples,
+    relatedWords: sections.related && !/^none\.?$/i.test(sections.related)
+      ? sections.related.split(/[,;]\s*/).filter(Boolean).slice(0, 3)
+      : [],
+    source: "gemini",
   };
 }
 
@@ -116,46 +98,33 @@ function localEnhance(
   sourceLang: LanguageCode
 ): AIEnhancedResult {
   const lower = word.toLowerCase();
-
-  let simpleExplanation = `A clear way to understand "${word}": ${definition
-    .split(".")
-    .slice(0, 1)
-    .join(".")
-    .trim()}.`;
+  const summary = definition.split(".").slice(0, 1).join(".").trim();
+  const simpleExplanation = `A clear way to understand "${word}": ${summary}.`;
 
   let usageNotes =
-    "Use this word carefully depending on context and formality. In everyday Ghanaian conversation the tone can change the meaning.";
+    "Check the surrounding sentence to choose the most natural meaning and level of formality.";
 
   if (sourceLang === "tw" || ["medaase", "maakye", "nsuo", "aduane", "ɔdɔ", "fie"].includes(lower)) {
-    usageNotes =
-      "This is a common Twi word used daily in Ghana. Tone and context matter a lot.";
+    usageNotes = "This is a common Twi word used in Ghana. Its exact use can depend on the sentence and local context.";
   } else if (
     sourceLang === "ee" ||
     ["akpe", "tsi", "nuɖuɖu", "lɔlɔ̃", "aƒe"].includes(lower)
   ) {
-    usageNotes =
-      "This is a frequently used Ewe word. Pronunciation and tone can slightly change the meaning.";
+    usageNotes = "This is an Ewe word. Keep its written characters and accents, since they can distinguish sounds and meanings.";
   }
 
   const exampleSentences = [
     `I learned the word "${word}" today.`,
-    `Can you explain what "${word}" means simply?`,
-    `People often use "${word}" when speaking with family or friends.`,
+    `Can you explain what "${word}" means?`,
+    `I heard someone use "${word}" in a conversation.`,
   ];
-
-  if (lower === "medaase" || lower === "thank you") {
-    exampleSentences[0] = "Medaase for helping me.";
-    exampleSentences[1] = "I said medaase to the teacher.";
-  }
-  if (lower === "akpe") {
-    exampleSentences[0] = "Akpe na wò.";
-    exampleSentences[1] = "I told him akpe for the gift.";
-  }
 
   return {
     simpleExplanation,
+    detailedExplanation: `${definition} This quick explanation uses the dictionary definition shown above; a Gemini key is needed for a fuller, context-aware explanation.`,
     usageNotes,
     exampleSentences,
     relatedWords: [],
+    source: "local",
   };
 }

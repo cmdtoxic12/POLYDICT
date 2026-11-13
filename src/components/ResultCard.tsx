@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Volume2, Star, Sparkles, ChevronDown, ChevronUp } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import { speakWord } from "@/lib/dictionary";
@@ -20,6 +20,10 @@ export default function ResultCard() {
   const [aiResult, setAiResult] = useState<AIEnhancedResult | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [showAllMeanings, setShowAllMeanings] = useState(false);
+
+  useEffect(() => {
+    setAiResult(null);
+  }, [currentResult?.word]);
 
   if (isLoading) {
     return (
@@ -45,13 +49,16 @@ export default function ResultCard() {
     }
     setAiLoading(true);
     const firstDef = currentResult.meanings[0]?.definition || "";
-    const enhanced = await enhanceWithAI(
-      currentResult.word,
-      firstDef,
-      sourceLang
-    );
-    setAiResult(enhanced);
-    setAiLoading(false);
+    try {
+      const enhanced = await enhanceWithAI(
+        currentResult.word,
+        firstDef,
+        sourceLang
+      );
+      setAiResult(enhanced);
+    } finally {
+      setAiLoading(false);
+    }
   };
 
   return (
@@ -175,17 +182,30 @@ export default function ResultCard() {
             ? "Thinking..."
             : aiResult
             ? "Hide AI explanation"
-            : "Explain simply with AI"}
+            : "Explain in detail"}
         </button>
 
         {aiResult && (
           <div className="mt-4 space-y-3 text-sm">
+            {aiResult.source === "local" && (
+              <p role="status" className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+                Gemini isn’t connected yet, so this is a basic offline explanation. Add <code>GEMINI_API_KEY</code> to your deployment settings and redeploy for detailed answers.
+              </p>
+            )}
             <div>
               <p className="font-semibold text-violet-800 dark:text-violet-200">
                 Simple explanation
               </p>
               <p className="text-zinc-700 dark:text-zinc-300 mt-1">
                 {aiResult.simpleExplanation}
+              </p>
+            </div>
+            <div>
+              <p className="font-semibold text-violet-800 dark:text-violet-200">
+                Detailed meaning
+              </p>
+              <p className="text-zinc-700 dark:text-zinc-300 mt-1">
+                {aiResult.detailedExplanation}
               </p>
             </div>
             <div>
@@ -206,6 +226,12 @@ export default function ResultCard() {
                 ))}
               </ul>
             </div>
+            {aiResult.relatedWords.length > 0 && (
+              <div>
+                <p className="font-semibold text-violet-800 dark:text-violet-200">Related words</p>
+                <p className="text-zinc-700 dark:text-zinc-300 mt-1">{aiResult.relatedWords.join(", ")}</p>
+              </div>
+            )}
           </div>
         )}
       </div>

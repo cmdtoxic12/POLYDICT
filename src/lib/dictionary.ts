@@ -1,5 +1,29 @@
-import type { DictionaryResult, LanguageCode, Definition, AIEnhancedResult } from "./types";
+import type { DictionaryResult, LanguageCode, Definition } from "./types";
 import { lookupLocal } from "./local-dictionary";
+
+interface DictionaryApiDefinition {
+  definition: string;
+  example?: string;
+  synonyms?: string[];
+}
+
+interface DictionaryApiMeaning {
+  partOfSpeech?: string;
+  definitions?: DictionaryApiDefinition[];
+  synonyms?: string[];
+}
+
+interface DictionaryApiPhonetic {
+  text?: string;
+  audio?: string;
+}
+
+interface DictionaryApiEntry {
+  word: string;
+  phonetic?: string;
+  phonetics?: DictionaryApiPhonetic[];
+  meanings?: DictionaryApiMeaning[];
+}
 
 // Free Dictionary API (English primarily)
 async function fetchEnglishDefinition(word: string): Promise<DictionaryResult | null> {
@@ -11,7 +35,7 @@ async function fetchEnglishDefinition(word: string): Promise<DictionaryResult | 
     const data = await res.json();
     if (!Array.isArray(data) || data.length === 0) return null;
 
-    const entry = data[0];
+    const entry = data[0] as DictionaryApiEntry;
     const meanings: Definition[] = [];
 
     for (const meaning of entry.meanings || []) {
@@ -27,11 +51,11 @@ async function fetchEnglishDefinition(word: string): Promise<DictionaryResult | 
 
     const phonetic =
       entry.phonetic ||
-      entry.phonetics?.find((p: any) => p.text)?.text ||
+      entry.phonetics?.find((phoneticEntry) => phoneticEntry.text)?.text ||
       undefined;
 
     const audio =
-      entry.phonetics?.find((p: any) => p.audio)?.audio || undefined;
+      entry.phonetics?.find((phoneticEntry) => phoneticEntry.audio)?.audio || undefined;
 
     return {
       word: entry.word,
