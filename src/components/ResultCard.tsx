@@ -189,7 +189,12 @@ export default function ResultCard() {
           <div className="mt-4 space-y-3 text-sm">
             {aiResult.source === "local" && (
               <p role="status" className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
-                Gemini isn’t connected yet, so this is a basic offline explanation. Add <code>GEMINI_API_KEY</code> to your deployment settings and redeploy for detailed answers.
+                {aiResult.fallbackReason === "not_configured"
+                  ? "GEMINI_API_KEY is missing from the production server settings."
+                  : aiResult.fallbackReason === "provider_error"
+                    ? `Gemini returned an error${aiResult.providerStatus ? ` (HTTP ${aiResult.providerStatus})` : ""}. Check the Vercel runtime logs for the provider response.`
+                    : "The server could not reach Gemini. Check the Vercel runtime logs and try again."}{" "}
+                Showing a basic offline explanation for now.
               </p>
             )}
             <div>

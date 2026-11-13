@@ -7,6 +7,7 @@ import ResultCard from "@/components/ResultCard";
 import RecentSearches from "@/components/RecentSearches";
 import ThemeToggle from "@/components/ThemeToggle";
 import QuizMode from "@/components/QuizMode";
+import { PWAInstallPrompt } from "@/components/PWAExperience";
 import { BookOpen, GraduationCap, Sparkles } from "lucide-react";
 
 export default function HomePage() {
@@ -14,14 +15,14 @@ export default function HomePage() {
 
   if (showQuiz) {
     return (
-      <main className="min-h-screen px-4 py-8 sm:py-12 flex items-center justify-center">
+      <main className="pwa-shell flex min-h-[100dvh] items-center justify-center">
         <QuizMode onClose={() => setShowQuiz(false)} />
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen px-4 pb-12 sm:px-6 sm:pb-16">
+    <main className="pwa-shell min-h-[100dvh]">
       <header className="mx-auto flex max-w-6xl items-center justify-between py-5 sm:py-7">
         <a href="#home" className="flex items-center gap-3 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500" aria-label="PolyDict home">
           <span className="grid h-10 w-10 place-items-center rounded-2xl bg-emerald-600 text-white shadow-sm shadow-emerald-900/10">
@@ -44,6 +45,10 @@ export default function HomePage() {
           <ThemeToggle />
         </div>
       </header>
+
+      <div className="mx-auto max-w-6xl">
+        <PWAInstallPrompt />
+      </div>
 
       <section id="home" className="mx-auto max-w-6xl pt-8 sm:pt-14">
         <div className="mx-auto max-w-3xl text-center">

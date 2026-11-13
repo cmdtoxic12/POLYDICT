@@ -38,6 +38,12 @@ Click the **Quiz** button (graduation cap) in the header.
 
 You can switch direction (English → Local or Local → English) and target language (Twi / Ewe / French / Spanish).
 
+### Install PolyDict on a phone
+
+PolyDict can be installed as a PWA from its public HTTPS deployment. On Android, open the site in Chrome and tap **Install app** when the prompt appears. On iPhone or iPad, open it in Safari, tap **Share**, then choose **Add to Home Screen**.
+
+The service worker caches the app shell and versioned Next.js assets for offline reopening. Dictionary network lookups and Gemini explanations still need an internet connection; API responses are never cached.
+
 ### Connect Gemini
 
 The Gemini explanation runs through a Next.js server route, so the API key stays on the server and is never sent to the browser.

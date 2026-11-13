@@ -38,6 +38,8 @@ export interface AIEnhancedResult {
   exampleSentences: string[];
   relatedWords: string[];
   source: "gemini" | "local";
+  fallbackReason?: "not_configured" | "provider_error" | "network_error";
+  providerStatus?: number;
 }
 
 export interface SearchHistoryItem {

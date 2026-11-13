@@ -12,16 +12,34 @@ export async function enhanceWithAI(
       body: JSON.stringify({ word, definition, sourceLang }),
     });
 
-    if (!response.ok) throw new Error("Gemini request failed");
+    const result = await response.json().catch(() => ({})) as {
+      text?: unknown;
+      providerStatus?: unknown;
+      code?: unknown;
+    };
+    if (!response.ok) {
+      const fallbackReason = result.code === "not_configured"
+        ? "not_configured"
+        : result.code === "network_error"
+          ? "network_error"
+          : "provider_error";
+      return {
+        ...localEnhance(word, definition, sourceLang),
+        fallbackReason,
+        providerStatus: typeof result.providerStatus === "number" ? result.providerStatus : undefined,
+      };
+    }
 
-    const result = await response.json() as { text?: unknown };
     if (typeof result.text !== "string" || !result.text.trim()) {
       throw new Error("Gemini returned an empty explanation");
     }
 
     return parseAIResponse(result.text, word, definition, sourceLang);
   } catch {
-    return localEnhance(word, definition, sourceLang);
+    return {
+      ...localEnhance(word, definition, sourceLang),
+      fallbackReason: "network_error",
+    };
   }
 }
 
