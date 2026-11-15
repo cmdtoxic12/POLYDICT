@@ -80,13 +80,11 @@ ${transcript}
 PolyDict AI:`;
 
   const attempts = [
-    { model: "gemini-3.8-flash", delayMs: 0 },
-    { model: "gemini-3.8-flash", delayMs: 750 },
-    { model: "gemini-3.5-flash-lite", delayMs: 0 },
+    { model: "gemini-3.8-flash" },
+    { model: "gemini-3.5-flash-lite" },
   ];
 
   for (const [index, attempt] of attempts.entries()) {
-    if (attempt.delayMs) await new Promise((resolve) => setTimeout(resolve, attempt.delayMs));
     let response: Response;
     try {
       response = await fetch("https://generativelanguage.googleapis.com/v1beta/interactions", {
@@ -97,7 +95,7 @@ PolyDict AI:`;
           "Api-Revision": "2026-05-20",
         },
         body: JSON.stringify({ model: attempt.model, input: prompt, store: false }),
-        signal: AbortSignal.timeout(8000),
+        signal: AbortSignal.timeout(12_000),
       });
     } catch (error) {
       console.error(`Gemini chat request failed for ${attempt.model} on attempt ${index + 1}`, error);
@@ -111,7 +109,7 @@ PolyDict AI:`;
     if (!response.ok) {
       const providerError = (await response.text()).slice(0, 1500);
       console.error(`Gemini chat request failed for ${attempt.model} on attempt ${index + 1}`, response.status, providerError);
-      if (response.status === 503 && index < attempts.length - 1) continue;
+      if ((response.status === 429 || response.status === 503) && index < attempts.length - 1) continue;
       return Response.json(
         { error: "PolyDict AI could not reply right now. Please try again.", code: "provider_error", providerStatus: response.status },
         { status: 502 }

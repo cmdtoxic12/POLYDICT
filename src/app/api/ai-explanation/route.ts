@@ -62,14 +62,12 @@ Examples:
 Related words: list up to three useful synonyms or related words, or write None.`;
 
   const attempts = [
-    { model: "gemini-3.8-flash", delayMs: 0 },
-    { model: "gemini-3.8-flash", delayMs: 750 },
-    { model: "gemini-3.5-flash-lite", delayMs: 0 },
+    { model: "gemini-3.8-flash" },
+    { model: "gemini-3.5-flash-lite" },
   ];
 
   for (const [index, attempt] of attempts.entries()) {
-    const { model, delayMs } = attempt;
-    if (delayMs) await new Promise((resolve) => setTimeout(resolve, delayMs));
+    const { model } = attempt;
     let response: Response;
     try {
       response = await fetch("https://generativelanguage.googleapis.com/v1beta/interactions", {
@@ -80,7 +78,7 @@ Related words: list up to three useful synonyms or related words, or write None.
           "Api-Revision": "2026-05-20",
         },
         body: JSON.stringify({ model, input: prompt, store: false }),
-        signal: AbortSignal.timeout(8000),
+        signal: AbortSignal.timeout(12_000),
       });
     } catch (error) {
       console.error(`Gemini request failed for ${model} on attempt ${index + 1}`, error);
@@ -94,7 +92,7 @@ Related words: list up to three useful synonyms or related words, or write None.
     if (!response.ok) {
       const providerError = (await response.text()).slice(0, 1500);
       console.error(`Gemini request failed for ${model} on attempt ${index + 1}`, response.status, providerError);
-      if (response.status === 503 && index < attempts.length - 1) continue;
+      if ((response.status === 429 || response.status === 503) && index < attempts.length - 1) continue;
       return Response.json(
         {
           error: "Gemini could not generate an explanation.",
