@@ -75,7 +75,8 @@ export default function AIChatWidget({
       if (!response.ok || typeof reply !== "string") {
         throw new Error(data?.error || "PolyDict AI couldn't reply right now. Please try again.");
       }
-      setMessages((current) => [...current, { role: "assistant", content: reply }].slice(-24));
+      const assistantMessage: ChatMessage = { role: "assistant", content: reply };
+      setMessages((current) => [...current, assistantMessage].slice(-24));
     } catch (sendError) {
       setError(sendError instanceof Error ? sendError.message : "Connection failed. Please try again.");
     } finally {
