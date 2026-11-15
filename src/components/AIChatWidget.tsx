@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { Fragment, useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 import { LoaderCircle, MessageCircle, RotateCcw, Send, Sparkles, X } from "lucide-react";
 import { LANGUAGES } from "@/lib/types";
 import { useAppStore } from "@/lib/store";
@@ -14,6 +14,66 @@ const welcomeMessage: ChatMessage = {
   role: "assistant",
   content: "Hi! I can help with words that are hard to find. Share the word and any context you have, or ask how to say something.",
 };
+
+function renderInlineMarkdown(text: string): ReactNode[] {
+  const parts = text.split(/(\*\*[^*]+\*\*|__[^_]+__|\*[^*]+\*|_[^_]+_|`[^`]+`)/g);
+  return parts.map((part, index) => {
+    if ((part.startsWith("**") && part.endsWith("**")) || (part.startsWith("__") && part.endsWith("__"))) {
+      return <strong key={index} className="font-semibold text-zinc-950 dark:text-white">{part.slice(2, -2)}</strong>;
+    }
+    if ((part.startsWith("*") && part.endsWith("*")) || (part.startsWith("_") && part.endsWith("_"))) {
+      return <em key={index}>{part.slice(1, -1)}</em>;
+    }
+    if (part.startsWith("`") && part.endsWith("`")) {
+      return <code key={index} className="rounded bg-zinc-100 px-1 py-0.5 font-mono text-[0.9em] dark:bg-zinc-800">{part.slice(1, -1)}</code>;
+    }
+    return part;
+  });
+}
+
+function FormattedMessage({ content }: { content: string }) {
+  const lines = content.replace(/\\([*_`#-])/g, "$1").split(/\r?\n/);
+  const blocks: ReactNode[] = [];
+  let index = 0;
+
+  while (index < lines.length) {
+    if (!lines[index].trim()) {
+      index += 1;
+      continue;
+    }
+
+    const heading = lines[index].match(/^#{1,3}\s+(.+)$/);
+    if (heading) {
+      blocks.push(<h3 key={index} className="mb-1 mt-3 text-sm font-bold text-zinc-950 first:mt-0 dark:text-white">{renderInlineMarkdown(heading[1])}</h3>);
+      index += 1;
+      continue;
+    }
+
+    const listMatch = lines[index].match(/^\s*(?:[-*]|\d+[.)])\s+(.+)$/);
+    if (listMatch) {
+      const ordered = /^\s*\d+[.)]\s+/.test(lines[index]);
+      const items: ReactNode[] = [];
+      while (index < lines.length) {
+        const item = lines[index].match(/^\s*(?:[-*]|\d+[.)])\s+(.+)$/);
+        if (!item || /^\s*\d+[.)]\s+/.test(lines[index]) !== ordered) break;
+        items.push(<li key={index}>{renderInlineMarkdown(item[1])}</li>);
+        index += 1;
+      }
+      const List = ordered ? "ol" : "ul";
+      blocks.push(<List key={`list-${index}`} className={ordered ? "my-1 list-decimal space-y-1 pl-5 marker:text-emerald-700 dark:marker:text-emerald-400" : "my-1 list-disc space-y-1 pl-5 marker:text-emerald-700 dark:marker:text-emerald-400"}>{items}</List>);
+      continue;
+    }
+
+    const paragraph: string[] = [];
+    while (index < lines.length && lines[index].trim() && !/^#{1,3}\s+/.test(lines[index]) && !/^\s*(?:[-*]|\d+[.)])\s+/.test(lines[index])) {
+      paragraph.push(lines[index].trim());
+      index += 1;
+    }
+    blocks.push(<p key={`paragraph-${index}`} className="my-1 first:mt-0 last:mb-0">{renderInlineMarkdown(paragraph.join(" "))}</p>);
+  }
+
+  return <div className="space-y-2 text-sm leading-6">{blocks.map((block, blockIndex) => <Fragment key={blockIndex}>{block}</Fragment>)}</div>;
+}
 
 export default function AIChatWidget({
   open,
@@ -136,15 +196,15 @@ export default function AIChatWidget({
               const isUser = message.role === "user";
               return (
                 <div key={`${index}-${message.role}`} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
-                  <p
-                    className={`max-w-[88%] whitespace-pre-wrap break-words rounded-2xl px-3.5 py-2.5 text-sm leading-6 ${
+                  <div
+                    className={`max-w-[88%] break-words rounded-2xl px-3.5 py-2.5 ${
                       isUser
                         ? "rounded-br-md bg-emerald-700 text-white dark:bg-emerald-600"
                         : "rounded-bl-md border border-zinc-200 bg-white text-zinc-800 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100"
                     }`}
                   >
-                    {message.content}
-                  </p>
+                    {isUser ? <p className="whitespace-pre-wrap text-sm leading-6">{message.content}</p> : <FormattedMessage content={message.content} />}
+                  </div>
                 </div>
               );
             })}
