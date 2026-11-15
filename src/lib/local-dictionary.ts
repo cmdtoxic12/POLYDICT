@@ -200,6 +200,44 @@ export function lookupLocal(word: string): LocalEntry | null {
   );
 }
 
+function editDistance(a: string, b: string): number {
+  const previous = Array.from({ length: b.length + 1 }, (_, index) => index);
+  for (let row = 1; row <= a.length; row += 1) {
+    let diagonal = previous[0];
+    previous[0] = row;
+    for (let column = 1; column <= b.length; column += 1) {
+      const above = previous[column];
+      previous[column] = Math.min(
+        previous[column] + 1,
+        previous[column - 1] + 1,
+        diagonal + (a[row - 1] === b[column - 1] ? 0 : 1)
+      );
+      diagonal = above;
+    }
+  }
+  return previous[b.length];
+}
+
+const commonEnglishWords = [
+  "about", "after", "again", "answer", "beautiful", "because", "belonging", "between", "change", "community", "curious", "different", "family", "friend", "gratitude", "hello", "language", "learning", "meaning", "medaase", "nuance", "people", "please", "resilience", "school", "serendipity", "thank", "thanks", "thrive", "together", "water", "welcome", "word", "world",
+];
+
+export function findWordSuggestions(query: string, limit = 4): string[] {
+  const clean = query.trim().toLocaleLowerCase();
+  if (clean.length < 2) return [];
+  const candidates = new Set([
+    ...commonEnglishWords,
+    ...LOCAL_DICT.flatMap((entry) => [entry.word, ...Object.values(entry.translations).filter((value): value is string => Boolean(value))]),
+  ]);
+  const maxDistance = clean.length <= 4 ? 1 : 2;
+  return [...candidates]
+    .map((word) => ({ word, distance: editDistance(clean, word.toLocaleLowerCase()) }))
+    .filter((item) => item.distance > 0 && item.distance <= maxDistance)
+    .sort((a, b) => a.distance - b.distance || a.word.localeCompare(b.word))
+    .slice(0, limit)
+    .map((item) => item.word);
+}
+
 export function getQuizWords(count = 10): LocalEntry[] {
   // Shuffle and return
   const shuffled = [...LOCAL_DICT].sort(() => Math.random() - 0.5);

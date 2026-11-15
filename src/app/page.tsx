@@ -11,6 +11,7 @@ import { PWAInstallPrompt } from "@/components/PWAExperience";
 import { BookOpen, GraduationCap, MessageCircle, Sparkles } from "lucide-react";
 import AIChatWidget from "@/components/AIChatWidget";
 import WordOfTheDay from "@/components/WordOfTheDay";
+import ReviewDashboard from "@/components/ReviewDashboard";
 
 export default function HomePage() {
   const [showQuiz, setShowQuiz] = useState(false);
@@ -91,6 +92,7 @@ export default function HomePage() {
 
         <div className="mx-auto mt-10 max-w-3xl">
           <ResultCard />
+          <ReviewDashboard />
           <RecentSearches />
         </div>
       </section>

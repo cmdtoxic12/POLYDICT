@@ -16,7 +16,9 @@ interface AppState {
   // Search history & favorites
   history: SearchHistoryItem[];
   favorites: string[];
+  learningDates: string[];
   addToHistory: (item: SearchHistoryItem) => void;
+  recordLearningDay: () => void;
   toggleFavorite: (word: string) => void;
   clearHistory: () => void;
 
@@ -46,13 +48,24 @@ export const useAppStore = create<AppState>()(
 
       history: [],
       favorites: [],
+      learningDates: [],
       addToHistory: (item) =>
         set((state) => {
           const filtered = state.history.filter(
             (h) => !(h.word === item.word && h.language === item.language)
           );
-          return { history: [item, ...filtered].slice(0, 20) };
+          const today = new Date();
+          const dateKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+          return {
+            history: [item, ...filtered].slice(0, 20),
+            learningDates: [dateKey, ...state.learningDates.filter((date) => date !== dateKey)].slice(0, 365),
+          };
         }),
+      recordLearningDay: () => set((state) => {
+        const today = new Date();
+        const dateKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+        return { learningDates: [dateKey, ...(state.learningDates ?? []).filter((date) => date !== dateKey)].slice(0, 365) };
+      }),
       toggleFavorite: (word) =>
         set((state) => {
           const exists = state.favorites.includes(word);
@@ -77,6 +90,7 @@ export const useAppStore = create<AppState>()(
         darkMode: state.darkMode,
         history: state.history,
         favorites: state.favorites,
+        learningDates: state.learningDates,
       }),
     }
   )

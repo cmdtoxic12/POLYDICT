@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Volume2, Star, Sparkles, ChevronDown, ChevronUp } from "lucide-react";
+import { Volume2, Volume1, Star, Sparkles, ChevronDown, ChevronUp } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import { speakWord } from "@/lib/dictionary";
 import { enhanceWithAI } from "@/lib/ai";
 import { LANGUAGES, type AIEnhancedResult } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import ContextExamples from "@/components/ContextExamples";
+import CorrectionForm from "@/components/CorrectionForm";
 
 export default function ResultCard() {
   const {
@@ -80,10 +82,19 @@ export default function ResultCard() {
           <div className="flex gap-2">
             <button
               onClick={() => speakWord(currentResult.word, sourceLang)}
-              className="p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-300"
-              title="Pronounce"
+              className="inline-flex min-h-10 items-center gap-1.5 rounded-xl px-2.5 text-xs font-semibold text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              title="Play pronunciation"
+              aria-label={`Pronounce ${currentResult.word}`}
             >
-              <Volume2 className="h-5 w-5" />
+              <Volume2 className="h-4 w-4" /> Listen
+            </button>
+            <button
+              onClick={() => speakWord(currentResult.word, sourceLang, 0.62)}
+              className="inline-flex min-h-10 items-center gap-1.5 rounded-xl px-2.5 text-xs font-semibold text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              title="Play pronunciation slowly"
+              aria-label={`Pronounce ${currentResult.word} slowly`}
+            >
+              <Volume1 className="h-4 w-4" /> Slow
             </button>
             <button
               onClick={() => toggleFavorite(currentResult.word)}
@@ -170,6 +181,8 @@ export default function ResultCard() {
         )}
       </div>
 
+      <ContextExamples word={currentResult.word} language={sourceLang} />
+
       {/* AI Enhance button + panel */}
       <div className="p-5 rounded-2xl bg-gradient-to-br from-violet-50 to-fuchsia-50 dark:from-violet-950/30 dark:to-fuchsia-950/20 border border-violet-100 dark:border-violet-900/50">
         <button
@@ -244,6 +257,9 @@ export default function ResultCard() {
       <p className="text-xs text-center text-zinc-400">
         Source: {currentResult.source}
       </p>
+      {(sourceLang === "tw" || sourceLang === "ee" || currentResult.source.includes("Local")) && (
+        <CorrectionForm word={currentResult.word} language={sourceLang} />
+      )}
     </div>
   );
 }

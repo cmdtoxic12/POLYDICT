@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowUpRight, CalendarDays, LoaderCircle, Sparkles } from "lucide-react";
+import { ArrowUpRight, CalendarDays, LoaderCircle, Sparkles, Star } from "lucide-react";
 import { enhanceWithAI } from "@/lib/ai";
 import { LANGUAGES, type AIEnhancedResult, type LanguageCode } from "@/lib/types";
+import { useAppStore } from "@/lib/store";
 
 type DailyWord = {
   word: string;
@@ -42,6 +43,9 @@ export default function WordOfTheDay() {
   const [aiResult, setAiResult] = useState<AIEnhancedResult | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
+  const favorites = useAppStore((state) => state.favorites);
+  const toggleFavorite = useAppStore((state) => state.toggleFavorite);
+  const recordLearningDay = useAppStore((state) => state.recordLearningDay);
 
   useEffect(() => {
     const updateDay = () => {
@@ -98,6 +102,7 @@ export default function WordOfTheDay() {
               <div className="mt-2 flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
                 <span className="rounded-full bg-emerald-50 px-2.5 py-1 font-semibold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">{word.partOfSpeech}</span>
                 <span>{language?.flag} {language?.name}</span>
+                <button type="button" onClick={() => { toggleFavorite(word.word); recordLearningDay(); }} aria-pressed={favorites.includes(word.word)} className="ml-auto inline-flex min-h-8 items-center gap-1.5 rounded-lg px-2 font-semibold text-amber-700 hover:bg-amber-50 dark:text-amber-300 dark:hover:bg-amber-950/40"><Star className={`h-3.5 w-3.5 ${favorites.includes(word.word) ? "fill-current" : ""}`} aria-hidden="true" />{favorites.includes(word.word) ? "Saved" : "Save word"}</button>
               </div>
               <p className="mt-4 text-base font-medium leading-7 text-zinc-800 dark:text-zinc-100">{word.meaning}</p>
               <div className="mt-4 rounded-2xl bg-zinc-50 px-4 py-3.5 dark:bg-zinc-950/60">

@@ -5,6 +5,7 @@ import { LoaderCircle, Search, X } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import { lookupWord } from "@/lib/dictionary";
 import { cn } from "@/lib/utils";
+import { findWordSuggestions } from "@/lib/local-dictionary";
 
 export default function SearchBar({
   suggestions = [],
@@ -13,6 +14,7 @@ export default function SearchBar({
 }) {
   const [query, setQuery] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [wordSuggestions, setWordSuggestions] = useState<string[]>([]);
   const {
     sourceLang,
     targetLangs,
@@ -28,6 +30,7 @@ export default function SearchBar({
 
     setQuery(word);
     setErrorMessage("");
+    setWordSuggestions([]);
     setIsLoading(true);
     setCurrentResult(null);
 
@@ -36,6 +39,7 @@ export default function SearchBar({
       if (!result || result.source === "Fallback") {
         setCurrentResult(null);
         setErrorMessage(`No dictionary entry found for “${word}”. Check the spelling or try another word.`);
+        setWordSuggestions(findWordSuggestions(word));
         return;
       }
       setCurrentResult(result);
@@ -115,9 +119,10 @@ export default function SearchBar({
       )}
       <p className="sr-only" aria-live="polite">{isLoading ? "Searching dictionary" : errorMessage}</p>
       {errorMessage && (
-        <p role="alert" className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-sm text-rose-800 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-200">
-          {errorMessage}
-        </p>
+        <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 dark:border-rose-900 dark:bg-rose-950/40">
+          <p role="alert" className="text-sm text-rose-800 dark:text-rose-200">{errorMessage}</p>
+          {wordSuggestions.length > 0 && <div className="mt-2 flex flex-wrap items-center gap-2"><span className="text-xs text-rose-700 dark:text-rose-300">Did you mean?</span>{wordSuggestions.map((word) => <button key={word} type="button" onClick={() => void searchFor(word)} className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-200 hover:bg-emerald-50 dark:bg-zinc-900 dark:text-emerald-300 dark:ring-emerald-900">{word}</button>)}</div>}
+        </div>
       )}
     </div>
   );

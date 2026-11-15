@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
-import { LoaderCircle, MessageCircle, RotateCcw, Send, Sparkles, X } from "lucide-react";
+import { LoaderCircle, MessageCircle, RotateCcw, Send, Sparkles, Star, X } from "lucide-react";
 import { LANGUAGES } from "@/lib/types";
 import { useAppStore } from "@/lib/store";
 
@@ -83,10 +83,15 @@ export default function AIChatWidget({
   onOpenChange: (open: boolean) => void;
 }) {
   const sourceLang = useAppStore((state) => state.sourceLang);
+  const toggleFavorite = useAppStore((state) => state.toggleFavorite);
+  const recordLearningDay = useAppStore((state) => state.recordLearningDay);
+  const favorites = useAppStore((state) => state.favorites);
   const [messages, setMessages] = useState<ChatMessage[]>([welcomeMessage]);
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState("");
+  const [saveWord, setSaveWord] = useState("");
+  const [savedMessageIndex, setSavedMessageIndex] = useState<number | null>(null);
   const endOfMessagesRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const languageName = LANGUAGES.find((language) => language.code === sourceLang)?.name ?? "English";
@@ -103,6 +108,8 @@ export default function AIChatWidget({
     setMessages([welcomeMessage]);
     setInput("");
     setError("");
+    setSaveWord("");
+    setSavedMessageIndex(null);
   };
 
   const sendMessage = async (event: FormEvent) => {
@@ -204,6 +211,12 @@ export default function AIChatWidget({
                     }`}
                   >
                     {isUser ? <p className="whitespace-pre-wrap text-sm leading-6">{message.content}</p> : <FormattedMessage content={message.content} />}
+                    {!isUser && index > 0 && <div className="mt-2 border-t border-zinc-100 pt-2 dark:border-zinc-800">
+                      {savedMessageIndex === index ? <p className="text-[11px] font-medium text-emerald-700 dark:text-emerald-300">Saved to your review cards.</p> : <form onSubmit={(event) => { event.preventDefault(); const word = saveWord.trim(); if (!word) return; if (!favorites.includes(word)) toggleFavorite(word); recordLearningDay(); setSavedMessageIndex(index); setSaveWord(""); }} className="flex items-center gap-2">
+                        <input value={saveWord} onChange={(event) => setSaveWord(event.target.value)} maxLength={100} aria-label="Word to save from the AI answer" placeholder="Save a word from this answer" className="min-w-0 flex-1 bg-transparent text-[11px] outline-none placeholder:text-zinc-400" />
+                        <button type="submit" disabled={!saveWord.trim()} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-40 dark:text-emerald-300 dark:hover:bg-emerald-950/50"><Star className="h-3 w-3" aria-hidden="true" />Save</button>
+                      </form>}
+                    </div>}
                   </div>
                 </div>
               );

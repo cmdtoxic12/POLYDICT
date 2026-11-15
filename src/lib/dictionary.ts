@@ -166,9 +166,10 @@ export async function lookupWord(
 }
 
 // Improved AI Enhancement with richer local logic
-export function speakWord(text: string, lang: LanguageCode = "en") {
+export function speakWord(text: string, lang: LanguageCode = "en", rate = 0.9) {
   if (typeof window === "undefined" || !window.speechSynthesis) return;
 
+  window.speechSynthesis.cancel();
   const utterance = new SpeechSynthesisUtterance(text);
   const langMap: Record<LanguageCode, string> = {
     en: "en-US",
@@ -178,6 +179,6 @@ export function speakWord(text: string, lang: LanguageCode = "en") {
     ee: "en-GH",
   };
   utterance.lang = langMap[lang] || "en-US";
-  utterance.rate = 0.9;
+  utterance.rate = rate;
   window.speechSynthesis.speak(utterance);
 }
