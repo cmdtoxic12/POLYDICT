@@ -25,6 +25,7 @@ export function PWAInstallPrompt() {
   const [isInstalled, setIsInstalled] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
   const [dismissed, setDismissed] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
 
   useEffect(() => {
     const standalone = window.matchMedia("(display-mode: standalone)").matches ||
@@ -61,10 +62,17 @@ export function PWAInstallPrompt() {
   }, []);
 
   const install = async () => {
-    if (!installEvent) return;
+    if (!installEvent) {
+      setHelpOpen((open) => !open);
+      return;
+    }
     await installEvent.prompt();
     const choice = await installEvent.userChoice;
-    if (choice.outcome === "accepted") setInstallEvent(null);
+    if (choice.outcome === "accepted") {
+      setInstallEvent(null);
+      setIsInstalled(true);
+      setHelpOpen(false);
+    }
   };
 
   const showInstallHelp = !isInstalled && !dismissed && (Boolean(installEvent) || isIOS);
@@ -109,6 +117,32 @@ export function PWAInstallPrompt() {
             <X className="h-4 w-4" aria-hidden="true" />
           </button>
         </aside>
+      )}
+
+      {!isInstalled && (
+        <>
+          {helpOpen && !installEvent && (
+            <div id="pwa-install-help" role="status" className="fixed bottom-20 left-4 z-40 w-[min(20rem,calc(100vw-2rem))] rounded-2xl border border-emerald-200 bg-white p-4 text-sm text-zinc-700 shadow-xl dark:border-emerald-900 dark:bg-zinc-900 dark:text-zinc-200">
+              <p className="font-semibold text-zinc-900 dark:text-white">Install PolyDict</p>
+              <p className="mt-1.5 text-xs leading-5">
+                {isIOS
+                  ? "Tap Share in your browser, then choose Add to Home Screen."
+                  : "Open your browser menu and choose Install app or Add to Home Screen."}
+              </p>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={install}
+            aria-expanded={helpOpen}
+            aria-controls={helpOpen && !installEvent ? "pwa-install-help" : undefined}
+            aria-label={installEvent ? "Install PolyDict app" : "Show instructions to install PolyDict"}
+            className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-4 z-40 inline-flex min-h-12 items-center gap-2 rounded-full border border-emerald-200 bg-white px-4 text-sm font-semibold text-emerald-800 shadow-lg shadow-emerald-950/10 transition hover:-translate-y-0.5 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:border-emerald-900 dark:bg-zinc-900 dark:text-emerald-300 dark:hover:bg-emerald-950"
+          >
+            <Download className="h-4 w-4" aria-hidden="true" />
+            <span>Install app</span>
+          </button>
+        </>
       )}
     </>
   );

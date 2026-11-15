@@ -1,10 +1,57 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { BookOpen, LoaderCircle } from "lucide-react";
 import type { LanguageCode } from "@/lib/types";
 
 const contexts = ["Everyday conversation", "School", "Travel", "Work"] as const;
+
+function inlineFormatting(text: string): ReactNode[] {
+  const parts = text.split(/(\*\*[^*]+\*\*|__[^_]+__|\*[^*]+\*|_[^_]+_|`[^`]+`)/g);
+  return parts.map((part, index) => {
+    if ((part.startsWith("**") && part.endsWith("**")) || (part.startsWith("__") && part.endsWith("__"))) {
+      return <strong key={index} className="font-semibold text-zinc-900 dark:text-white">{part.slice(2, -2)}</strong>;
+    }
+    if ((part.startsWith("*") && part.endsWith("*")) || (part.startsWith("_") && part.endsWith("_"))) {
+      return <em key={index}>{part.slice(1, -1)}</em>;
+    }
+    if (part.startsWith("`") && part.endsWith("`")) return <code key={index} className="rounded bg-zinc-100 px-1 font-mono dark:bg-zinc-800">{part.slice(1, -1)}</code>;
+    return part;
+  });
+}
+
+function FormattedExamples({ text }: { text: string }) {
+  const normalized = text
+    .replace(/&nbsp;|&#x20;|&#32;/gi, " ")
+    .replace(/\\([*_`#])/g, "$1")
+    .trim();
+  const lines = normalized.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const intro: string[] = [];
+  const examples: Array<{ sentence: string; context: string }> = [];
+  let current: { sentence: string; context: string } | null = null;
+
+  for (const line of lines) {
+    const item = line.match(/^\d+[.)]\s+(.+)$/);
+    const situation = line.match(/^(?:[-*]\s*)?(?:\*{0,2})?(?:Situation|Context|Use)\s*:\s*(.+)$/i);
+    if (item) {
+      if (current) examples.push(current);
+      current = { sentence: item[1], context: "" };
+    } else if (situation && current) {
+      current.context = situation[1];
+    } else if (current) {
+      current.context = [current.context, line].filter(Boolean).join(" ");
+    } else if (!/^hello!\s+i am polydict ai/i.test(line) && !/fully confident/i.test(line) && !/^here are (three|some)/i.test(line)) {
+      intro.push(line);
+    }
+  }
+  if (current) examples.push(current);
+
+  return <div className="space-y-3">
+    {intro.length > 0 && <p className="text-sm leading-6 text-zinc-600 dark:text-zinc-300">{inlineFormatting(intro.join(" "))}</p>}
+    {examples.length > 0 && <ol className="space-y-2.5">{examples.map((example, index) => <li key={index} className="rounded-xl border border-sky-100 bg-white p-3 dark:border-sky-950 dark:bg-zinc-900"><div className="flex gap-2.5"><span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-sky-100 text-xs font-bold text-sky-800 dark:bg-sky-950 dark:text-sky-200">{index + 1}</span><div className="min-w-0"><p className="text-sm leading-6 text-zinc-800 dark:text-zinc-100">{inlineFormatting(example.sentence)}</p>{example.context && <p className="mt-1.5 text-xs leading-5 text-zinc-500 dark:text-zinc-400"><span className="font-semibold text-sky-800 dark:text-sky-300">Situation</span> · {inlineFormatting(example.context)}</p>}</div></div></li>)}</ol>}
+    {examples.length === 0 && intro.length === 0 && <p className="text-sm leading-6 text-zinc-700 dark:text-zinc-300">{inlineFormatting(normalized)}</p>}
+  </div>;
+}
 
 export default function ContextExamples({ word, language }: { word: string; language: LanguageCode }) {
   const [context, setContext] = useState<(typeof contexts)[number]>(contexts[0]);
@@ -45,7 +92,7 @@ export default function ContextExamples({ word, language }: { word: string; lang
         {busy ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : null}{busy ? "Creating examples…" : `Show ${context.toLowerCase()} examples`}
       </button>
       {error && <p role="alert" className="mt-3 text-xs text-rose-700 dark:text-rose-300">{error}</p>}
-      {examples && <div className="mt-3 whitespace-pre-wrap rounded-xl bg-white p-3 text-sm leading-6 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-200">{examples}</div>}
+      {examples && <div className="mt-3 rounded-xl border border-sky-100 bg-white/70 p-3 dark:border-sky-950 dark:bg-zinc-900/60"><FormattedExamples text={examples} /></div>}
     </div>
   );
 }
