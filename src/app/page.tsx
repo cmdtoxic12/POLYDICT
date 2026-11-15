@@ -8,10 +8,12 @@ import RecentSearches from "@/components/RecentSearches";
 import ThemeToggle from "@/components/ThemeToggle";
 import QuizMode from "@/components/QuizMode";
 import { PWAInstallPrompt } from "@/components/PWAExperience";
-import { BookOpen, GraduationCap, Sparkles } from "lucide-react";
+import { BookOpen, GraduationCap, MessageCircle, Sparkles } from "lucide-react";
+import AIChatWidget from "@/components/AIChatWidget";
 
 export default function HomePage() {
   const [showQuiz, setShowQuiz] = useState(false);
+  const [showAiChat, setShowAiChat] = useState(false);
 
   if (showQuiz) {
     return (
@@ -72,6 +74,18 @@ export default function HomePage() {
           </div>
         </div>
 
+        <div className="mx-auto mt-4 flex max-w-3xl flex-col items-center justify-center gap-2 text-center sm:flex-row sm:gap-3">
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">Couldn’t find the word you need?</p>
+          <button
+            type="button"
+            onClick={() => setShowAiChat(true)}
+            className="inline-flex min-h-10 items-center gap-2 rounded-xl px-3 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:text-emerald-300 dark:hover:bg-emerald-950/40"
+          >
+            <MessageCircle className="h-4 w-4" aria-hidden="true" />
+            Ask PolyDict AI
+          </button>
+        </div>
+
         <div className="mx-auto mt-10 max-w-3xl">
           <ResultCard />
           <RecentSearches />
@@ -82,6 +96,7 @@ export default function HomePage() {
         <p>Made for curious minds and everyday conversations.</p>
         <p className="mt-1">PolyDict · Your multilingual learning companion</p>
       </footer>
+      <AIChatWidget open={showAiChat} onOpenChange={setShowAiChat} />
     </main>
   );
 }
