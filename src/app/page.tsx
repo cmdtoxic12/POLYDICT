@@ -10,6 +10,7 @@ import QuizMode from "@/components/QuizMode";
 import { PWAInstallPrompt } from "@/components/PWAExperience";
 import { BookOpen, GraduationCap, MessageCircle, Sparkles } from "lucide-react";
 import AIChatWidget from "@/components/AIChatWidget";
+import WordOfTheDay from "@/components/WordOfTheDay";
 
 export default function HomePage() {
   const [showQuiz, setShowQuiz] = useState(false);
@@ -66,6 +67,8 @@ export default function HomePage() {
             Look up a word, hear how it sounds, and keep new language close at hand.
           </p>
         </div>
+
+        <WordOfTheDay />
 
         <div className="mx-auto mt-9 max-w-3xl rounded-3xl border border-white bg-white/90 p-4 shadow-xl shadow-emerald-950/[0.04] ring-1 ring-zinc-200/70 sm:p-6 dark:border-zinc-800 dark:bg-zinc-900/90 dark:ring-zinc-800">
           <LanguageSelector />
